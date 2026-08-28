@@ -1,0 +1,33 @@
+.DS_Store
+.history
+node_modules/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+**/*.log
+.workbuddy
+tests/**/coverage/
+tests/e2e/reports
+selenium-debug.log
+*.local.*
+dist.zip
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.local
+
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# 编译生成的文件
+auto-imports.d.ts
+components.d.ts
+
+/generated/prisma
