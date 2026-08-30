@@ -21,6 +21,7 @@ dist.zip
 *.njsproj
 *.sln
 *.local
+.next
 
 package-lock.json
 yarn.lock
