@@ -653,7 +653,7 @@ export interface PrismaClientBaseOptions {
    *  { emit: 'stdout', level: 'error' }
    * 
    * ```
-   * Read more in our [docs](https://pris.ly/d/logging).
+   * Read more in our [errNotes](https://pris.ly/d/logging).
    */
   log?: (LogLevel | LogDefinition)[]
   /**
