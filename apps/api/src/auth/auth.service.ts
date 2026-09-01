@@ -3,12 +3,16 @@ import { RegisterDTO } from './DTO/auth.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './DTO/login.dto';
 import bcrypt from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
 
 // 认证服务：核心业务逻辑（密码加密、用户查询、密码比对）
 @Injectable()
 export class AuthService {
   // 注入全局 PrismaModule 导出的 PrismaService（PrismaModule 标了 @Global）
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   /**
    * 注册
@@ -50,6 +54,14 @@ export class AuthService {
       // 密码不匹配：抛 401，提示语与"用户不存在"保持一致
       throw new UnauthorizedException('邮箱或密码错误');
     }
-    return true;
+    const accessToken = await this.jwtService.signAsync({
+      id: userInfo.id,
+      email: userInfo.email,
+      name: userInfo.name,
+    });
+    return {
+      access_token: accessToken,
+      userInfo,
+    };
   }
 }
