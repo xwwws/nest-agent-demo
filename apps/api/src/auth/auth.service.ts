@@ -4,7 +4,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './DTO/login.dto';
 import bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-
+import { JwtStrategy } from './auth.strategy';
+export interface JwtPayload {
+  id: string;
+  email: string;
+  name: string;
+}
 // 认证服务：核心业务逻辑（密码加密、用户查询、密码比对）
 @Injectable()
 export class AuthService {
@@ -12,6 +17,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly jwtStrategy: JwtStrategy,
   ) {}
 
   /**
@@ -33,35 +39,36 @@ export class AuthService {
    * @returns 校验通过返回 true，否则抛 401
    */
   async login(data: LoginDto) {
-    // 第一步：按邮箱查用户
     const userInfo = await this.prisma.user.findUnique({
       where: { email: data.email },
     });
     if (!userInfo) {
-      // 用户不存在：抛 401
-      // 注意提示语和密码错误时保持一致（"邮箱或密码错误"），
-      // 避免攻击者通过不同报错探测哪些邮箱已注册（用户枚举攻击）
       throw new UnauthorizedException('邮箱或密码错误');
     }
-    // 第二步：bcrypt 比对密码
-    // 不能用 hash(明文) === 存的哈希 来比较——因为盐是随机的，两次 hash 结果必然不同
-    // compare 内部会从哈希串里解析出盐和成本因子，用同样的参数重新计算再比对
     const passwordMatch = await bcrypt.compare(
       data.password,
       userInfo.password,
     );
     if (!passwordMatch) {
-      // 密码不匹配：抛 401，提示语与"用户不存在"保持一致
       throw new UnauthorizedException('邮箱或密码错误');
     }
-    const accessToken = await this.jwtService.signAsync({
+    const jwtPayload: JwtPayload = {
       id: userInfo.id,
       email: userInfo.email,
-      name: userInfo.name,
-    });
+      name: userInfo.name!,
+    };
+    const accessToken = await this.jwtService.signAsync(jwtPayload);
     return {
       access_token: accessToken,
-      userInfo,
+      // userInfo,
     };
   }
+
+
+
+
+  // async profile() {
+  //   const user
+  //   return {}
+  // }
 }
