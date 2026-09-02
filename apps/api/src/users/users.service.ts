@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { UserCreateInput } from '../../generated/prisma/models/User';
+import { CreateDTO } from './DTO/create.DTO';
 
 @Injectable()
 export class UsersService {
@@ -22,8 +22,7 @@ export class UsersService {
   /**
    * 创建用户
    */
-  createUser(data: any) {
-    console.log(data);
+  createUser(data: CreateDTO) {
     return this.prisma.user.create({
       data: {
         name: data.name,

@@ -1,10 +1,10 @@
-import { Controller, Post, Body, Get, Req, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDTO } from './DTO/auth.dto';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { LoginDto } from './DTO/login.dto';
-import { JwtAuthGuard } from './jwt-auth.guard';
+import { PublicApi } from '../common/decorators/publicApi.decorators';
 
 // 认证控制器：暴露 /auth/* 路由
 @Controller('auth')
@@ -15,6 +15,7 @@ export class AuthController {
   /**
    * @param data 注册信息
    */
+  @PublicApi()
   @Post('/register')
   async register(@Body() data: RegisterDTO) {
     const registerData = plainToClass(RegisterDTO, data);
@@ -28,13 +29,13 @@ export class AuthController {
   /**
    * @param data 登录信息
    */
+  @PublicApi()
   @Post('/login')
   async login(@Body() data: LoginDto) {
     return await this.authService.login(data);
   }
 
   @Get('/profile')
-  @UseGuards(JwtAuthGuard)
   profile(@Req() req: any) {
     return req.user;
   }

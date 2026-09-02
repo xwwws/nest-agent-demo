@@ -64,9 +64,6 @@ export class AuthService {
     };
   }
 
-
-
-
   // async profile() {
   //   const user
   //   return {}
