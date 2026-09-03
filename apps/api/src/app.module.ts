@@ -8,9 +8,10 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtGuard } from './auth/jwt.guard';
 import { APP_GUARD } from '@nestjs/core';
+import { ConversationModule } from './conversation/conversation.module';
 
 @Module({
-  imports: [HealthModule, PrismaModule, UsersModule, AuthModule],
+  imports: [HealthModule, PrismaModule, UsersModule, AuthModule, ConversationModule],
   controllers: [AppController, HealthController],
   providers: [
     {

@@ -1,0 +1,51 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
+import { ConversationService } from './conversation.service';
+import { CreateConversationDto } from './dto/create-conversation.dto';
+import { UpdateConversationDto } from './dto/update-conversation.dto';
+import { User } from '../common/decorators/user.decorator';
+import type { JwtPayload } from '../auth/auth.service';
+
+@Controller('conversation')
+export class ConversationController {
+  constructor(private readonly conversationService: ConversationService) {}
+
+  @Post()
+  create(
+    @Body() createConversationDto: CreateConversationDto,
+    @User() user: JwtPayload,
+  ) {
+    return this.conversationService.create(createConversationDto, user);
+  }
+
+  @Get()
+  findAll() {
+    return this.conversationService.findAll();
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.conversationService.findOne(+id);
+  }
+
+  @Patch(':id')
+  update(
+    @User() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() updateConversationDto: UpdateConversationDto,
+  ) {
+    return this.conversationService.update(+id, updateConversationDto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.conversationService.remove(+id);
+  }
+}

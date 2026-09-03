@@ -12,7 +12,19 @@ model User {
   email     String   @unique
   password  String
   name      String?
-  isDelete  Boolean @default(false)
+  isDelete  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  conversations Conversation[]
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
 }
