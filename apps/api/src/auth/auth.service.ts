@@ -60,12 +60,6 @@ export class AuthService {
     const accessToken = await this.jwtService.signAsync(jwtPayload);
     return {
       access_token: accessToken,
-      // userInfo,
     };
   }
-
-  // async profile() {
-  //   const user
-  //   return {}
-  // }
 }

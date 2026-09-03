@@ -1,10 +1,11 @@
-import { Controller, Post, Body, Get, Req } from '@nestjs/common';
+import { Controller, Post, Body, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDTO } from './DTO/auth.dto';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { LoginDto } from './DTO/login.dto';
 import { PublicApi } from '../common/decorators/publicApi.decorators';
+import { User } from '../common/decorators/user.decorator';
 
 // 认证控制器：暴露 /auth/* 路由
 @Controller('auth')
@@ -36,7 +37,8 @@ export class AuthController {
   }
 
   @Get('/profile')
-  profile(@Req() req: any) {
-    return req.user;
+  profile(@User() user: any) {
+    console.log(user);
+    return user;
   }
 }
