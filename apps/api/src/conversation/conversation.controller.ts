@@ -26,13 +26,13 @@ export class ConversationController {
   }
 
   @Get()
-  findAll() {
-    return this.conversationService.findAll();
+  findAll(@User() user: JwtPayload) {
+    return this.conversationService.findAll(user);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.conversationService.findOne(+id);
+  findOne(@Param('id') id: string, @User() user: JwtPayload) {
+    return this.conversationService.findOne(id, user);
   }
 
   @Patch(':id')
@@ -41,11 +41,11 @@ export class ConversationController {
     @Param('id') id: string,
     @Body() updateConversationDto: UpdateConversationDto,
   ) {
-    return this.conversationService.update(+id, updateConversationDto);
+    return this.conversationService.update(id, updateConversationDto, user);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.conversationService.remove(+id);
+  remove(@Param('id') id: string, @User() user: JwtPayload) {
+    return this.conversationService.remove(id, user);
   }
 }

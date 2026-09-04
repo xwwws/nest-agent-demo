@@ -13,19 +13,39 @@ export class ConversationService {
     });
   }
 
-  findAll() {
-    return `This action returns all conversation`;
+  async findAll(user: JwtPayload) {
+    return await this.prisma.conversation.findMany({
+      where: { userId: user.id, isDelete: false },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} conversation`;
+  async findOne(id: string, user: JwtPayload) {
+    return await this.prisma.conversation.findFirstOrThrow({
+      where: { id: id, userId: user.id, isDelete: false },
+    });
   }
 
-  update(id: number, updateConversationDto: UpdateConversationDto) {
-    return `This action updates a #${id} conversation`;
+  async update(
+    id: string,
+    updateConversationDto: UpdateConversationDto,
+    user: JwtPayload,
+  ) {
+    return await this.prisma.conversation.updateMany({
+      where: { id: id, userId: user.id, isDelete: false },
+      data: updateConversationDto,
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} conversation`;
+  async remove(id: string, user: JwtPayload) {
+    return await this.prisma.conversation.updateMany({
+      where: {
+        id,
+        userId: user.id,
+        isDelete: false,
+      },
+      data: {
+        isDelete: true,
+      },
+    });
   }
 }
