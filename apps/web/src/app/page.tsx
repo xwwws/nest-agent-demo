@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 export default function Home() {
   const [health, setHealth] = useState<any>('');
   useEffect(() => {
-    fetch('http://localhost:3001/health')
+    fetch('http://localhost:9500/health')
       .then((res) => res.json())
       .then((data) => setHealth(data.message));
   }, []);

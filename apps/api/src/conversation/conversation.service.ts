@@ -15,13 +15,13 @@ export class ConversationService {
 
   async findAll(user: JwtPayload) {
     return await this.prisma.conversation.findMany({
-      where: { userId: user.id, isDelete: false },
+      where: { userId: user.id },
     });
   }
 
   async findOne(id: string, user: JwtPayload) {
     return await this.prisma.conversation.findFirstOrThrow({
-      where: { id: id, userId: user.id, isDelete: false },
+      where: { id: id, userId: user.id },
     });
   }
 
@@ -31,20 +31,16 @@ export class ConversationService {
     user: JwtPayload,
   ) {
     return await this.prisma.conversation.updateMany({
-      where: { id: id, userId: user.id, isDelete: false },
+      where: { id: id, userId: user.id },
       data: updateConversationDto,
     });
   }
 
   async remove(id: string, user: JwtPayload) {
-    return await this.prisma.conversation.updateMany({
+    return await this.prisma.conversation.delete({
       where: {
         id,
         userId: user.id,
-        isDelete: false,
-      },
-      data: {
-        isDelete: true,
       },
     });
   }

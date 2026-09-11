@@ -9,7 +9,7 @@ async function bootstrap() {
    * 允许跨域
    */
   app.enableCors({
-    origin: 'http://localhost:3000',
+    origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type',
     credentials: true,
@@ -33,6 +33,6 @@ async function bootstrap() {
       },
     }),
   );
-  await app.listen(process.env.PORT ?? 3001);
+  await app.listen(process.env.PORT as unknown as number);
 }
 bootstrap();
