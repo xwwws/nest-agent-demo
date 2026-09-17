@@ -9,9 +9,17 @@ import { AuthModule } from './auth/auth.module';
 import { JwtGuard } from './auth/jwt.guard';
 import { APP_GUARD } from '@nestjs/core';
 import { ConversationModule } from './conversation/conversation.module';
+import { MessagesModule } from './messages/messages.module';
 
 @Module({
-  imports: [HealthModule, PrismaModule, UsersModule, AuthModule, ConversationModule],
+  imports: [
+    HealthModule,
+    PrismaModule,
+    UsersModule,
+    AuthModule,
+    ConversationModule,
+    MessagesModule,
+  ],
   controllers: [AppController, HealthController],
   providers: [
     {

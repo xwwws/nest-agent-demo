@@ -45,6 +45,7 @@ nest-demo/
 │   │   │   ├── auth/           # 认证（注册/登录/JWT/Passport/守卫/装饰器）
 │   │   │   ├── users/          # 用户 CRUD（含软删除）
 │   │   │   ├── conversation/   # 会话 CRUD（关联当前用户）
+│   │   │   ├── messages/       # 消息 CRUD（挂载于会话下，关联当前用户）
 │   │   │   ├── prisma/         # PrismaService / PrismaModule
 │   │   │   ├── health/         # 健康检查
 │   │   │   └── common/         # 公共装饰器（@PublicApi / @User）
@@ -66,7 +67,7 @@ nest-demo/
 
 ## 三、已完成内容（当前进度）
 
-> 后端基础设施已基本打通：从 Monorepo 到数据库、再到完整的用户认证链路和第一个业务模块（会话）均已落地。
+> 后端基础设施已基本打通：从 Monorepo 到数据库、再到完整的用户认证链路，以及「会话 + 消息」业务模块均已落地。
 
 ### 目标一 · Monorepo（✅ 已完成）
 
@@ -108,7 +109,14 @@ nest-demo/
 - Prisma 一对多关联：`User 1 — N Conversation`。
 - 通过 `@User()` 装饰器把会话与当前登录用户自动关联。
 - 使用 `PartialType`（更新 DTO 复用）+ `@Transform` 做字段处理。
-- 同样支持软删除。
+
+### 目标八 · Message 消息模块（✅ 已完成）
+
+- **嵌套路由**：`/conversation/:conversationId/messages`，消息挂载在会话之下。
+- Prisma 一对多关联：`Conversation 1 — N Message`，并配置 `onDelete: Cascade`（删会话级联删消息）。
+- 读写消息前先校验会话归属（`findFirst({ id, userId })`），非本人会话抛 `NotFoundException`。
+- 发送消息时 `role` 固定写为 `'user'`，为后续接入 LLM 预留 `assistant` 角色。
+- DTO 用 `@IsNotEmpty` + `@Transform(trim)` 做内容校验与清洗。
 
 ---
 
@@ -130,7 +138,9 @@ nest-demo/
 | Conversation | `GET /conversation` | 当前用户会话列表 | 需 JWT |
 | Conversation | `GET /conversation/:id` | 查询单个会话 | 需 JWT |
 | Conversation | `PATCH /conversation/:id` | 更新会话 | 需 JWT |
-| Conversation | `DELETE /conversation/:id` | 软删除会话 | 需 JWT |
+| Conversation | `DELETE /conversation/:id` | 删除会话 | 需 JWT |
+| Messages | `POST /conversation/:conversationId/messages` | 新增消息 | 需 JWT |
+| Messages | `GET /conversation/:conversationId/messages` | 查询会话消息列表 | 需 JWT |
 
 > 后端默认端口 `3001`（`PORT` 环境变量可改），前端默认 `3000`。
 
@@ -152,15 +162,25 @@ model User {
 }
 
 model Conversation {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   title     String
   content   String
   userId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isDelete  Boolean  @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user     User      @relation(fields: [userId], references: [id])
+  messages Message[]
+}
+
+model Message {
+  id             Int          @id @default(autoincrement())
+  content        String
+  role           String
+  conversationId String
+  createdAt      DateTime     @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 }
 ```
 
@@ -173,6 +193,7 @@ model Conversation {
 | `20260903053447_add_conversation` | 新增 Conversation 表 |
 | `20260903072810_add_conversation_content` | Conversation 增加 content 字段 |
 | `20260903083940_add_conversation_isdelete` | Conversation 增加软删除标记 |
+| `20260911064407_add_message` | 新增 Message 表（`onDelete: Cascade`）+ 移除 Conversation 原有软删除标记 |
 
 ---
 
@@ -198,14 +219,14 @@ model Conversation {
 
 ## 七、下一步计划
 
-当前学习节点：**后端基础（NestJS + Prisma + Auth + Conversation）已完成**，进入下一阶段。
+当前学习节点：**后端基础（NestJS + Prisma + Auth + Conversation + Message）已完成**，进入下一阶段。
 
 ```text
 Next.js App Router 正式接入
         ↓
 登录页 / Dashboard / 用户状态
         ↓
-Chat 系统（Conversation + Message）
+Chat 系统（后端会话/消息已就绪 → 接前端 Chat UI）
         ↓
 LLM + Streaming（OpenAI SDK + SSE）
         ↓
