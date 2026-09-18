@@ -4,17 +4,20 @@
 
 一个用来系统学习「前后端分离 + AI Agent 开发」的练手项目：后端核心业务 API 由 NestJS 提供，前端用 Next.js App Router，最终目标是搭出一个能注册登录、创建 Agent、配置工具与知识库、流式对话的完整平台。
 
+目前已经打通 **注册登录 → 会话 → 消息 → LLM 回复** 的完整链路（非流式）。
+
 ---
 
 ## 目录
 
 - [一、技术栈](#一技术栈)
-- [二、Monorepo 结构](#二monorepo-结构)
+- [二、项目结构](#二项目结构)
 - [三、已完成内容（当前进度）](#三已完成内容当前进度)
 - [四、API 接口一览](#四api-接口一览)
 - [五、数据库模型](#五数据库模型)
 - [六、学习笔记](#六学习笔记)
 - [七、下一步计划](#七下一步计划)
+- [常用命令](#常用命令)
 
 ---
 
@@ -24,50 +27,108 @@
 | --- | --- | --- |
 | Monorepo | pnpm workspace + Turborepo | 单仓管理 `apps/` 与 `packages/` |
 | 后端 | NestJS 11 + TypeScript | API 服务，IoC/DI 架构 |
-| 前端 | Next.js 16 + React 19 | App Router（尚在起步阶段） |
+| 前端 | Next.js 16（App Router）+ React 19 | 客户端组件 + 原生 fetch |
+| 样式 | Tailwind CSS 4 | `@tailwindcss/postcss` |
 | ORM | Prisma 7.10.0 | 使用 `prisma7.config.ts` + driver adapter 新配置 |
 | 数据库 | PostgreSQL（Supabase 托管） | 连接串 `DATABASE_URL`（应用）+ `DIRECT_URL`（migrate） |
 | 鉴权 | JWT + Passport（passport-jwt） | `JwtStrategy` + `JwtGuard` 全局守卫 |
 | 参数校验 | class-validator + class-transformer | 全局 `ValidationPipe` |
 | 密码 | bcrypt | salt rounds = 10 |
+| LLM | OpenAI SDK + 通义千问 | 走 DashScope 的 OpenAI 兼容接口，模型 `qwen-plus` |
 
-> 前端侧计划引入（尚未落地）：Tailwind CSS、shadcn/ui、TanStack Query、Zustand、React Hook Form、Zod、SSE。
+> 前端侧计划引入（尚未落地）：shadcn/ui、TanStack Query、Zustand、React Hook Form、Zod、SSE。
 
 ---
 
-## 二、Monorepo 结构
+## 二、项目结构
 
 ```text
 nest-demo/
 ├── apps/
-│   ├── api/                    # NestJS 后端
+│   ├── api/                                  # NestJS 后端（端口 9500）
 │   │   ├── src/
-│   │   │   ├── auth/           # 认证（注册/登录/JWT/Passport/守卫/装饰器）
-│   │   │   ├── users/          # 用户 CRUD（含软删除）
-│   │   │   ├── conversation/   # 会话 CRUD（关联当前用户）
-│   │   │   ├── messages/       # 消息 CRUD（挂载于会话下，关联当前用户）
-│   │   │   ├── prisma/         # PrismaService / PrismaModule
-│   │   │   ├── health/         # 健康检查
-│   │   │   └── common/         # 公共装饰器（@PublicApi / @User）
+│   │   │   ├── auth/                         # 认证模块
+│   │   │   │   ├── DTO/                      # 注册 / 登录 DTO
+│   │   │   │   ├── auth.controller.ts        # POST /auth/register|login，GET /auth/profile
+│   │   │   │   ├── auth.service.ts           # 注册、登录、签发 JWT（含 JwtPayload 定义）
+│   │   │   │   ├── auth.strategy.ts          # JwtStrategy：验签 + 还原 req.user
+│   │   │   │   ├── jwt.guard.ts              # JwtGuard：结合 @Public 系列装饰器放行
+│   │   │   │   └── auth.module.ts
+│   │   │   ├── users/                        # 用户 CRUD（含软删除 / 恢复）
+│   │   │   ├── conversation/                 # 会话 CRUD（关联当前用户）
+│   │   │   │   ├── dto/                      # Create / Update（PartialType）
+│   │   │   │   └── entities/
+│   │   │   ├── messages/                     # 消息模块（嵌套在会话下）
+│   │   │   │   ├── dto/create-message.dto.ts
+│   │   │   │   ├── messages.controller.ts    # /conversation/:conversationId/messages
+│   │   │   │   ├── messages.service.ts       # 落库 user 消息 → 调 LLM → 落库 assistant 消息
+│   │   │   │   └── messages.module.ts
+│   │   │   ├── llm/                          # LLM 模块
+│   │   │   │   ├── llm.service.ts            # OpenAI SDK 封装，chat(content)
+│   │   │   │   └── llm.module.ts             # exports LlmService
+│   │   │   ├── prisma/                       # PrismaService / PrismaModule（@Global）
+│   │   │   ├── health/                       # GET /health
+│   │   │   ├── common/decorators/            # @PublicApi / @User
+│   │   │   ├── app.module.ts                 # 各模块装配 + APP_GUARD 全局守卫
+│   │   │   └── main.ts                       # CORS + 全局守卫 + 全局 ValidationPipe
 │   │   ├── prisma/
-│   │   │   ├── schema.prisma   # 数据模型
-│   │   │   └── migrations/     # 迁移记录
-│   │   └── prisma7.config.ts   # Prisma 7 配置文件
-│   └── web/                    # Next.js 前端（起步）
+│   │   │   ├── schema.prisma                 # User / Conversation / Message
+│   │   │   └── migrations/                   # 6 条迁移记录
+│   │   └── prisma7.config.ts                 # Prisma 7 配置文件
+│   │
+│   └── web/                                  # Next.js 前端（端口 9501）
+│       ├── next.config.ts                    # rewrites：/api/backend/* → NestJS
+│       └── src/
+│           ├── app/                          # App Router 路由
+│           │   ├── layout.tsx                # 根布局（字体 + globals.css + metadata）
+│           │   ├── globals.css               # Tailwind 入口
+│           │   ├── page.tsx                  # 首页（检查登录态 → 跳会话列表）
+│           │   ├── login/page.tsx            # 登录页
+│           │   ├── register/page.tsx         # 注册页
+│           │   └── conversations/
+│           │       ├── page.tsx              # 会话列表页
+│           │       └── [id]/page.tsx         # 对话页（await params → ChatView）
+│           ├── components/
+│           │   ├── ApiStatus.tsx             # 后端连通状态探测
+│           │   ├── auth/
+│           │   │   ├── LoginForm.tsx         # 登录表单 → 存 token → 跳会话列表
+│           │   │   └── RegisterForm.tsx      # 注册表单 → 跳登录页
+│           │   ├── conversations/
+│           │   │   ├── ConversationList.tsx  # 拉列表 / 新建 / 删除 / 登出
+│           │   │   └── ConversationItem.tsx  # 单条会话（Link 进聊天页）
+│           │   └── messages/
+│           │       ├── ChatView.tsx          # 聊天主视图：拉取 + 发送 + 滚动
+│           │       ├── MessageList.tsx       # 消息列表 / 空态
+│           │       ├── MessageItem.tsx       # 气泡（按 role 决定样式）
+│           │       └── MessageInput.tsx      # 输入框（Enter 发送）
+│           ├── lib/
+│           │   ├── api.ts                    # fetch 封装：前缀 / Authorization / 错误翻译
+│           │   └── auth.ts                   # token 存取（localStorage）+ JWT 解码
+│           └── types/                        # conversation.ts / message.ts / user.ts
+│
 ├── packages/
-│   └── types/                  # 前后端共享 TS 类型（@agent-workspace/types）
-├── errNotes/                   # 学习笔记（每个目标一个文件）
-├── LEARNING_PLAN.md            # 学习计划
-├── agent-progress.md           # 项目进度记录
+│   └── types/                                # 共享 TS 类型（@agent-workspace/types）
+│
+├── errNotes/                                 # 学习笔记（每个目标一个文件）
+├── README.md                                 # 本文（项目现状）
+├── LEARNING_PLAN.md                          # 学习计划
+├── agent-progress.md                         # 进度记录
 ├── pnpm-workspace.yaml
 └── turbo.json
+```
+
+**请求链路**：
+
+```text
+浏览器 → /api/backend/*  →  Next rewrites  →  http://localhost:9500/*
+              （浏览器视角同源，无 CORS 预检）        NestJS
 ```
 
 ---
 
 ## 三、已完成内容（当前进度）
 
-> 后端基础设施已基本打通：从 Monorepo 到数据库、再到完整的用户认证链路，以及「会话 + 消息」业务模块均已落地。
+> 后端从 Monorepo 到数据库、认证、会话、消息、LLM 已全部打通；前端已完成登录注册、会话列表、聊天页的完整闭环。
 
 ### 目标一 · Monorepo（✅ 已完成）
 
@@ -90,7 +151,7 @@ nest-demo/
 
 - `class-validator` + `class-transformer` 实现注册/登录 DTO 校验。
 - 全局 `ValidationPipe`（`whitelist` + `transform` 自动类型转换）。
-- CORS 配置允许 `http://localhost:3000` 前端跨域访问。
+- CORS 配置允许前端跨域访问（实际上前端走 rewrites 代理，不触发预检）。
 
 ### 目标五 · bcrypt 密码存储（✅ 已完成）
 
@@ -115,8 +176,28 @@ nest-demo/
 - **嵌套路由**：`/conversation/:conversationId/messages`，消息挂载在会话之下。
 - Prisma 一对多关联：`Conversation 1 — N Message`，并配置 `onDelete: Cascade`（删会话级联删消息）。
 - 读写消息前先校验会话归属（`findFirst({ id, userId })`），非本人会话抛 `NotFoundException`。
-- 发送消息时 `role` 固定写为 `'user'`，为后续接入 LLM 预留 `assistant` 角色。
+- 发送流程：先落库 `role='user'` 的消息 → 调 `LlmService` 生成回复 → 落库 `role='assistant'` → 一次返回 `{ userMessage, assistantMessage }`。
 - DTO 用 `@IsNotEmpty` + `@Transform(trim)` 做内容校验与清洗。
+
+### 目标九 · LLM 模块（✅ 已完成）
+
+- 基于 **OpenAI SDK** 封装 `LlmService`，通过 `baseURL` 指向 **DashScope 的 OpenAI 兼容接口**，模型 `qwen-plus`（通义千问）。
+- 凭证与模型全部走环境变量：`LLM_API_KEY` / `LLM_API_BASE_URL` / `LLM_MODEL`，不写死在代码里。
+- `LlmModule` 导出 `LlmService`，由 `MessagesModule` 显式 `imports` 引入，模块间解耦。
+- 调用失败统一包成 `InternalServerErrorException('LLM failed')`。
+- 当前为**非流式**：一次请求拿到完整回复。
+
+### 目标十 · Next.js 前端（✅ 已完成）
+
+- **App Router 路由**：`/`（首页）、`/login`、`/register`、`/conversations`、`/conversations/[id]`。
+- **请求层**（`lib/api.ts`）：统一 `/api/backend` 前缀、自动带 `Authorization: Bearer`、把 HTTP 状态码包成 `ApiError`、把 NestJS 的 `message` 翻译成可读文案。
+- **跨域方案**：`next.config.ts` 用 rewrites 把 `/api/backend/:path*` 代理到 `http://localhost:9500`，浏览器视角同源 → 不触发 CORS 预检。
+- **登录态**：token 存 `localStorage`（`lib/auth.ts`），受保护页面在 Client Component 的 `useEffect` 里做守卫；因中间件（Next 16 的 `proxy.ts`）在服务端读不到 `localStorage`，故未用中间件重定向。
+- **登录 / 注册**：表单提交 → 存 token → 跳会话列表；注册成功后跳回登录页。
+- **会话列表**：拉取列表（前端按创建时间倒序）、新建会话（`title` + `content` 均必填）、删除会话（级联删消息）、退出登录。
+- **聊天页**：`ChatView` 并行拉取会话详情 + 历史消息 → 发送消息 → 追加 `user` / `assistant` 两条 → 自动滚到底部，等待回复时显示三点占位气泡。
+- **消息气泡**按 `role` 渲染（`user` / `assistant` / `system` / `tool`），为后续 Agent 的多角色预留。
+- 全站用 **Tailwind CSS 4** 完成样式。
 
 ---
 
@@ -138,11 +219,11 @@ nest-demo/
 | Conversation | `GET /conversation` | 当前用户会话列表 | 需 JWT |
 | Conversation | `GET /conversation/:id` | 查询单个会话 | 需 JWT |
 | Conversation | `PATCH /conversation/:id` | 更新会话 | 需 JWT |
-| Conversation | `DELETE /conversation/:id` | 删除会话 | 需 JWT |
-| Messages | `POST /conversation/:conversationId/messages` | 新增消息 | 需 JWT |
+| Conversation | `DELETE /conversation/:id` | 删除会话（级联删消息） | 需 JWT |
+| Messages | `POST /conversation/:conversationId/messages` | 发送消息，返回 `{ userMessage, assistantMessage }` | 需 JWT |
 | Messages | `GET /conversation/:conversationId/messages` | 查询会话消息列表 | 需 JWT |
 
-> 后端默认端口 `3001`（`PORT` 环境变量可改），前端默认 `3000`。
+> 后端端口 `9500`（`apps/api/.env` 的 `PORT`），前端端口 `9501`（`next dev -p 9501`）。
 
 ---
 
@@ -219,18 +300,12 @@ model Message {
 
 ## 七、下一步计划
 
-当前学习节点：**后端基础（NestJS + Prisma + Auth + Conversation + Message）已完成**，进入下一阶段。
+当前学习节点：**后端（NestJS + Prisma + Auth + Conversation + Message + LLM）与前端基础链路均已完成**，下一步进入流式输出。
 
 ```text
-Next.js App Router 正式接入
+SSE 流式输出（把 LLM 回复改成逐字返回）
         ↓
-登录页 / Dashboard / 用户状态
-        ↓
-Chat 系统（后端会话/消息已就绪 → 接前端 Chat UI）
-        ↓
-LLM + Streaming（OpenAI SDK + SSE）
-        ↓
-Tool Calling
+Tool Calling（calculator / weather / search …）
         ↓
 手写 Agent Loop
         ↓
@@ -254,13 +329,13 @@ pnpm install
 # 启动所有 app（turbo）
 pnpm dev
 
-# 单独启动后端（默认 3001）
+# 单独启动后端（端口 9500）
 pnpm --filter api dev
 
-# 单独启动前端（默认 3000）
+# 单独启动前端（端口 9501）
 pnpm --filter web dev
 
 # Prisma 迁移 / 生成 client
-pnpm --filter api prisma migrate dev
-pnpm --filter api prisma generate
+pnpm --filter api exec prisma migrate dev
+pnpm --filter api exec prisma generate
 ```

@@ -26,6 +26,13 @@ export default function MessageInput({ onSend, disabled = false }: Props) {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
+            // 输入法合成中（中文/日文等选词状态）的 Enter 是「确认候选词」，不是发送。
+            // 注意 isComposing 在原生事件上，React 的合成事件本身没有这个属性，
+            // 所以要经 e.nativeEvent 取；keyCode 229 是部分浏览器的老写法，一起兜底。
+            if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) {
+              return;
+            }
+
             // Enter 发送，Shift+Enter 换行
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
