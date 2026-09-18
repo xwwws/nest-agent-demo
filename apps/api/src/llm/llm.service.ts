@@ -1,5 +1,6 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import OpenAI from 'openai';
+import { DEFAULT_SYSTEM_PROMPT } from './SYSTEM_PROMPT';
 type LlmMessages = {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -17,7 +18,13 @@ export class LlmService {
     try {
       const response = await this.client.chat.completions.create({
         model: process.env.LLM_MODEL as string,
-        messages,
+        messages: [
+          {
+            role: 'system',
+            content: DEFAULT_SYSTEM_PROMPT,
+          },
+          ...messages,
+        ],
       });
       return response.choices[0].message.content;
     } catch (e) {

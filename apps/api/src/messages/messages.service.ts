@@ -3,6 +3,7 @@ import type { JwtPayload } from '../auth/auth.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { LlmService } from '../llm/llm.service';
+import { MAX_HISTORY_MESSAGES } from './messages.config';
 
 @Injectable()
 export class MessagesService {
@@ -34,10 +35,12 @@ export class MessagesService {
     // 查询该会话的所有历史消息
     const historyMessages = await this.prisma.message.findMany({
       where: { conversationId: id },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
+      take: MAX_HISTORY_MESSAGES,
     });
+    const hisMessages = historyMessages.toReversed();
     // 将数据库消息转换成大模型需要的格式
-    const messages = historyMessages.map((message) => ({
+    const messages = hisMessages.map((message) => ({
       role: message.role as 'user' | 'assistant',
       content: message.content,
     }));
