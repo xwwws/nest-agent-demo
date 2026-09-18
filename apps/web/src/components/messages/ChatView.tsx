@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { api, handleUnauthorized, toErrorMessage } from "@/lib/api";
 import { clearToken, getToken } from "@/lib/auth";
 import type { Conversation } from "@/types/conversation";
-import type { Message } from "@/types/message";
+import type { Message, SendMessageResponse } from "@/types/message";
 import MessageInput from "./MessageInput";
 import MessageList from "./MessageList";
 
@@ -57,22 +57,23 @@ export default function ChatView({
     void load();
   }, [router, load, reloadKey]);
 
-  // 新消息进来后滚到底部
+  // 新消息进来（或开始等待 AI 回复）后滚到底部
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length]);
+  }, [messages.length, sending]);
 
   async function sendMessage(content: string): Promise<boolean> {
     setSending(true);
     setSendError(null);
     try {
-      const created = await api.post<Message>(
+      // 后端接了 LLM：先存用户消息，再调模型生成回复，
+      // 一次返回 { userMessage, assistantMessage } 两条记录
+      const res = await api.post<SendMessageResponse>(
         `/conversation/${conversationId}/messages`,
         { content },
       );
-      // 后端固定写入 role: 'user'，返回体里就带着 role，
-      // 所以直接把它追加进列表即可，后续接 Agent 时 assistant 消息也走同一条路径
-      setMessages((prev) => [...prev, created]);
+      // 按对话顺序追加：先用户消息，再 AI 回复
+      setMessages((prev) => [...prev, res.userMessage, res.assistantMessage]);
       return true;
     } catch (err) {
       if (handleUnauthorized(err)) {
@@ -137,6 +138,19 @@ export default function ChatView({
           ) : (
             <MessageList messages={messages} />
           )}
+
+          {/* 等待 LLM 回复时的占位气泡，样式对齐 assistant 消息 */}
+          {sending && !error && !loading && (
+            <div className="mt-5 flex flex-col items-start gap-1">
+              <span className="px-1 text-xs text-gray-400">AI</span>
+              <div className="inline-flex items-center gap-1.5 rounded-2xl rounded-bl-sm border border-gray-200 bg-white px-4 py-2.5">
+                <span className="size-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:0ms]" />
+                <span className="size-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:150ms]" />
+                <span className="size-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:300ms]" />
+              </div>
+            </div>
+          )}
+
           <div ref={bottomRef} />
         </div>
       </div>

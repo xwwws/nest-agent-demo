@@ -10,6 +10,7 @@ import { JwtGuard } from './auth/jwt.guard';
 import { APP_GUARD } from '@nestjs/core';
 import { ConversationModule } from './conversation/conversation.module';
 import { MessagesModule } from './messages/messages.module';
+import { LlmModule } from './llm/llm.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { MessagesModule } from './messages/messages.module';
     AuthModule,
     ConversationModule,
     MessagesModule,
+    LlmModule,
   ],
   controllers: [AppController, HealthController],
   providers: [

@@ -17,3 +17,11 @@ export interface Message {
 export interface CreateMessagePayload {
   content: string;
 }
+
+// POST /conversation/:conversationId/messages 的返回。
+// 后端接了 LLM（LlmService）：先存 role='user' 的消息，
+// 再调模型生成回复存成 role='assistant'，两条一起返回
+export interface SendMessageResponse {
+  userMessage: Message;
+  assistantMessage: Message;
+}

@@ -12,7 +12,7 @@ tests/e2e/reports
 selenium-debug.log
 *.local.*
 dist.zip
-
+tsconfig.tsbuildinfo
 # Editor directories and files
 .idea
 .vscode
