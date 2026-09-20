@@ -25,6 +25,12 @@ export default function ChatView({
   const [sendError, setSendError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
+  // 系统提示词（System Prompt）编辑
+  const [editingPrompt, setEditingPrompt] = useState(false);
+  const [promptDraft, setPromptDraft] = useState("");
+  const [savingPrompt, setSavingPrompt] = useState(false);
+  const [promptError, setPromptError] = useState<string | null>(null);
+
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -38,6 +44,8 @@ export default function ChatView({
       ]);
       setConversation(detail);
       setMessages(history);
+      // 用后端返回的 systemPrompt 初始化编辑草稿
+      setPromptDraft(detail.systemPrompt ?? "");
     } catch (err) {
       if (handleUnauthorized(err)) {
         router.replace("/login");
@@ -61,6 +69,33 @@ export default function ChatView({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages.length, sending]);
+
+  // 保存会话的 System Prompt。
+  // 后端 PATCH 用的是 updateMany，只返回 { count } 不返回记录，所以成功后手动同步本地状态
+  async function savePrompt() {
+    setSavingPrompt(true);
+    setPromptError(null);
+    try {
+      const trimmed = promptDraft.trim();
+      // 注意不要传 null：后端 DTO 的 @Transform 会直接对 value 调 .trim()。
+      // 传空字符串表示清空，此时后端 LlmService 会退回 DEFAULT_SYSTEM_PROMPT
+      await api.patch(`/conversation/${conversationId}`, {
+        systemPrompt: trimmed,
+      });
+      setConversation((prev) =>
+        prev ? { ...prev, systemPrompt: trimmed || null } : prev,
+      );
+      setEditingPrompt(false);
+    } catch (err) {
+      if (handleUnauthorized(err)) {
+        router.replace("/login");
+        return;
+      }
+      setPromptError(toErrorMessage(err));
+    } finally {
+      setSavingPrompt(false);
+    }
+  }
 
   async function sendMessage(content: string): Promise<boolean> {
     setSending(true);
@@ -110,6 +145,16 @@ export default function ChatView({
           <button
             type="button"
             onClick={() => {
+              setEditingPrompt((v) => !v);
+              setPromptError(null);
+            }}
+            className="shrink-0 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 transition hover:bg-gray-50"
+          >
+            提示词
+          </button>
+          <button
+            type="button"
+            onClick={() => {
               clearToken();
               router.replace("/login");
             }}
@@ -119,6 +164,56 @@ export default function ChatView({
           </button>
         </div>
       </header>
+
+      {editingPrompt && (
+        <div className="border-b border-gray-200 bg-gray-50">
+          <div className="mx-auto w-full max-w-3xl px-6 py-4">
+            <label
+              htmlFor="system-prompt"
+              className="mb-1.5 block text-xs font-medium text-gray-600"
+            >
+              系统提示词（System Prompt）· 留空则使用后端默认提示词
+            </label>
+            <textarea
+              id="system-prompt"
+              value={promptDraft}
+              onChange={(e) => setPromptDraft(e.target.value)}
+              rows={4}
+              placeholder="例如：你是一名 NestJS 导师，用中文分步骤讲解"
+              className="w-full resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+            {promptError && (
+              <p
+                role="alert"
+                className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+              >
+                {promptError}
+              </p>
+            )}
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => void savePrompt()}
+                disabled={savingPrompt}
+                className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {savingPrompt ? "保存中…" : "保存"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPromptDraft(conversation?.systemPrompt ?? "");
+                  setEditingPrompt(false);
+                  setPromptError(null);
+                }}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 transition hover:bg-gray-50"
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <div className="mx-auto w-full max-w-3xl">

@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class CreateConversationDto {
@@ -11,4 +11,9 @@ export class CreateConversationDto {
   @IsString()
   @Transform(({ value }) => value.trim())
   content: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  systemPrompt?: string;
 }

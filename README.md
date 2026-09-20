@@ -55,16 +55,18 @@ nest-demo/
 │   │   │   │   ├── jwt.guard.ts              # JwtGuard：结合 @Public 系列装饰器放行
 │   │   │   │   └── auth.module.ts
 │   │   │   ├── users/                        # 用户 CRUD（含软删除 / 恢复）
-│   │   │   ├── conversation/                 # 会话 CRUD（关联当前用户）
-│   │   │   │   ├── dto/                      # Create / Update（PartialType）
+│   │   │   ├── conversation/                 # 会话 CRUD（含 systemPrompt，关联当前用户）
+│   │   │   │   ├── dto/                      # Create / Update（PartialType，含 systemPrompt?）
 │   │   │   │   └── entities/
 │   │   │   ├── messages/                     # 消息模块（嵌套在会话下）
 │   │   │   │   ├── dto/create-message.dto.ts
+│   │   │   │   ├── messages.config.ts        # MAX_HISTORY_MESSAGES（送入模型的上下文条数）
 │   │   │   │   ├── messages.controller.ts    # /conversation/:conversationId/messages
-│   │   │   │   ├── messages.service.ts       # 落库 user 消息 → 调 LLM → 落库 assistant 消息
+│   │   │   │   ├── messages.service.ts       # 落库 user 消息 → 取历史 → 调 LLM → 落库 assistant 消息
 │   │   │   │   └── messages.module.ts
 │   │   │   ├── llm/                          # LLM 模块
-│   │   │   │   ├── llm.service.ts            # OpenAI SDK 封装，chat(content)
+│   │   │   │   ├── SYSTEM_PROMPT.ts          # DEFAULT_SYSTEM_PROMPT（未配置时的兜底提示词）
+│   │   │   │   ├── llm.service.ts            # OpenAI SDK 封装，chat(messages, systemPrompt)
 │   │   │   │   └── llm.module.ts             # exports LlmService
 │   │   │   ├── prisma/                       # PrismaService / PrismaModule（@Global）
 │   │   │   ├── health/                       # GET /health
@@ -73,7 +75,7 @@ nest-demo/
 │   │   │   └── main.ts                       # CORS + 全局守卫 + 全局 ValidationPipe
 │   │   ├── prisma/
 │   │   │   ├── schema.prisma                 # User / Conversation / Message
-│   │   │   └── migrations/                   # 6 条迁移记录
+│   │   │   └── migrations/                   # 7 条迁移记录
 │   │   └── prisma7.config.ts                 # Prisma 7 配置文件
 │   │
 │   └── web/                                  # Next.js 前端（端口 9501）
@@ -94,13 +96,13 @@ nest-demo/
 │           │   │   ├── LoginForm.tsx         # 登录表单 → 存 token → 跳会话列表
 │           │   │   └── RegisterForm.tsx      # 注册表单 → 跳登录页
 │           │   ├── conversations/
-│           │   │   ├── ConversationList.tsx  # 拉列表 / 新建 / 删除 / 登出
+│           │   │   ├── ConversationList.tsx  # 拉列表 / 新建（可填 systemPrompt）/ 删除 / 登出
 │           │   │   └── ConversationItem.tsx  # 单条会话（Link 进聊天页）
 │           │   └── messages/
-│           │       ├── ChatView.tsx          # 聊天主视图：拉取 + 发送 + 滚动
+│           │       ├── ChatView.tsx          # 聊天主视图：拉取 + 发送 + 滚动 + 提示词编辑
 │           │       ├── MessageList.tsx       # 消息列表 / 空态
 │           │       ├── MessageItem.tsx       # 气泡（按 role 决定样式）
-│           │       └── MessageInput.tsx      # 输入框（Enter 发送）
+│           │       └── MessageInput.tsx      # 输入框（Enter 发送，含 IME 合成检测）
 │           ├── lib/
 │           │   ├── api.ts                    # fetch 封装：前缀 / Authorization / 错误翻译
 │           │   └── auth.ts                   # token 存取（localStorage）+ JWT 解码
@@ -184,6 +186,8 @@ nest-demo/
 - 基于 **OpenAI SDK** 封装 `LlmService`，通过 `baseURL` 指向 **DashScope 的 OpenAI 兼容接口**，模型 `qwen-plus`（通义千问）。
 - 凭证与模型全部走环境变量：`LLM_API_KEY` / `LLM_API_BASE_URL` / `LLM_MODEL`，不写死在代码里。
 - `LlmModule` 导出 `LlmService`，由 `MessagesModule` 显式 `imports` 引入，模块间解耦。
+- **会话级 System Prompt**：`chat(messages, systemPrompt)` 接受自定义提示词，未配置时用 `SYSTEM_PROMPT.ts` 的 `DEFAULT_SYSTEM_PROMPT` 兜底。
+- **多轮上下文**：`MessagesService` 取该会话最近 `MAX_HISTORY_MESSAGES` 条消息（倒序取再反转成时间正序）一并送入模型。
 - 调用失败统一包成 `InternalServerErrorException('LLM failed')`。
 - 当前为**非流式**：一次请求拿到完整回复。
 
@@ -194,9 +198,11 @@ nest-demo/
 - **跨域方案**：`next.config.ts` 用 rewrites 把 `/api/backend/:path*` 代理到 `http://localhost:9500`，浏览器视角同源 → 不触发 CORS 预检。
 - **登录态**：token 存 `localStorage`（`lib/auth.ts`），受保护页面在 Client Component 的 `useEffect` 里做守卫；因中间件（Next 16 的 `proxy.ts`）在服务端读不到 `localStorage`，故未用中间件重定向。
 - **登录 / 注册**：表单提交 → 存 token → 跳会话列表；注册成功后跳回登录页。
-- **会话列表**：拉取列表（前端按创建时间倒序）、新建会话（`title` + `content` 均必填）、删除会话（级联删消息）、退出登录。
+- **会话列表**：拉取列表（前端按创建时间倒序）、新建会话（`title` + `content` 必填，可选填 `systemPrompt`）、删除会话（级联删消息）、退出登录。
 - **聊天页**：`ChatView` 并行拉取会话详情 + 历史消息 → 发送消息 → 追加 `user` / `assistant` 两条 → 自动滚到底部，等待回复时显示三点占位气泡。
+- **System Prompt 编辑**：聊天页头部「提示词」按钮展开编辑面板，经 `PATCH /conversation/:id` 保存；留空表示清空，后端会退回默认提示词。
 - **消息气泡**按 `role` 渲染（`user` / `assistant` / `system` / `tool`），为后续 Agent 的多角色预留。
+- **输入框**：`Enter` 发送 / `Shift+Enter` 换行，并检测输入法合成状态（`e.nativeEvent.isComposing`），避免中文选词时误发送。
 - 全站用 **Tailwind CSS 4** 完成样式。
 
 ---
@@ -215,10 +221,10 @@ nest-demo/
 | Auth | `POST /auth/register` | 注册 | 公开 |
 | Auth | `POST /auth/login` | 登录（返回 `access_token`） | 公开 |
 | Auth | `GET /auth/profile` | 获取当前登录用户信息 | 需 JWT |
-| Conversation | `POST /conversation` | 新建会话 | 需 JWT |
+| Conversation | `POST /conversation` | 新建会话（可带 `systemPrompt`） | 需 JWT |
 | Conversation | `GET /conversation` | 当前用户会话列表 | 需 JWT |
-| Conversation | `GET /conversation/:id` | 查询单个会话 | 需 JWT |
-| Conversation | `PATCH /conversation/:id` | 更新会话 | 需 JWT |
+| Conversation | `GET /conversation/:id` | 查询单个会话（含 `systemPrompt`） | 需 JWT |
+| Conversation | `PATCH /conversation/:id` | 更新会话（含 `systemPrompt`） | 需 JWT |
 | Conversation | `DELETE /conversation/:id` | 删除会话（级联删消息） | 需 JWT |
 | Messages | `POST /conversation/:conversationId/messages` | 发送消息，返回 `{ userMessage, assistantMessage }` | 需 JWT |
 | Messages | `GET /conversation/:conversationId/messages` | 查询会话消息列表 | 需 JWT |
@@ -243,12 +249,13 @@ model User {
 }
 
 model Conversation {
-  id        String    @id @default(uuid())
-  title     String
-  content   String
-  userId    String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id           String    @id @default(uuid())
+  title        String
+  content      String
+  userId       String
+  systemPrompt String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   user     User      @relation(fields: [userId], references: [id])
   messages Message[]
@@ -275,6 +282,7 @@ model Message {
 | `20260903072810_add_conversation_content` | Conversation 增加 content 字段 |
 | `20260903083940_add_conversation_isdelete` | Conversation 增加软删除标记 |
 | `20260911064407_add_message` | 新增 Message 表（`onDelete: Cascade`）+ 移除 Conversation 原有软删除标记 |
+| `20260918085753_add_conversation_system_prompt` | Conversation 增加 `systemPrompt` 字段（可空） |
 
 ---
 

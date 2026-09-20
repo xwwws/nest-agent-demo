@@ -19,6 +19,7 @@ export default function ConversationList() {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [systemPrompt, setSystemPrompt] = useState("");
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -56,6 +57,8 @@ export default function ConversationList() {
     e.preventDefault();
     const trimmedTitle = title.trim();
     const trimmedContent = content.trim();
+    // systemPrompt 是可选字段，留空不拦截，交给后端用默认提示词
+    const trimmedSystemPrompt = systemPrompt.trim();
     if (!trimmedTitle || !trimmedContent) {
       setFormError("标题和描述都要填写");
       return;
@@ -64,14 +67,17 @@ export default function ConversationList() {
     setCreating(true);
     setFormError(null);
     try {
-      // 注意后端 CreateConversationDto 要求 title 和 content 都非空
+      // 注意后端 CreateConversationDto 要求 title 和 content 都非空；
+      // systemPrompt 可选，留空就不传该字段（后端会用默认提示词）
       const created = await api.post<Conversation>("/conversation", {
         title: trimmedTitle,
         content: trimmedContent,
+        systemPrompt: trimmedSystemPrompt || undefined,
       });
       setConversations((prev) => [created, ...prev]);
       setTitle("");
       setContent("");
+      setSystemPrompt("");
       setShowForm(false);
       // 建完直接进聊天页
       router.push(`/conversations/${created.id}`);
@@ -178,6 +184,23 @@ export default function ConversationList() {
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="想在这个会话里聊什么"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="systemPrompt"
+                className="mb-1.5 block text-sm font-medium text-gray-700"
+              >
+                系统提示词
+                <span className="ml-1 font-normal text-gray-400">（可选）</span>
+              </label>
+              <textarea
+                id="systemPrompt"
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
+                rows={3}
+                placeholder="留空则使用默认提示词，例如：你是一名 NestJS 导师，用中文分步骤讲解"
+                className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               />
             </div>
             {formError && (

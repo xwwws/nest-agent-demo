@@ -90,6 +90,7 @@ export const ConversationScalarFieldEnum = {
   title: 'title',
   content: 'content',
   userId: 'userId',
+  systemPrompt: 'systemPrompt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

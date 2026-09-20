@@ -14,11 +14,15 @@ export class LlmService {
       baseURL: process.env.LLM_API_BASE_URL,
     });
   }
-  async chat(messages: LlmMessages[]) {
+  async chat(messages: LlmMessages[], systemPrompt?: string | null) {
     try {
       const response = await this.client.chat.completions.create({
         model: process.env.LLM_MODEL as string,
         messages: [
+          {
+            role: 'system',
+            content: systemPrompt || DEFAULT_SYSTEM_PROMPT,
+          },
           {
             role: 'system',
             content: DEFAULT_SYSTEM_PROMPT,
