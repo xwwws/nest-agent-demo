@@ -1,6 +1,7 @@
 "use client";
 
 import type { Message, MessageRole } from "@/types/message";
+import MarkdownContent from "./MarkdownContent";
 
 // 按 role 决定气泡样式与显示名。
 // 用 role 而不是 isUser: boolean，接 Agent 后新增 assistant/system/tool 不用改结构
@@ -42,9 +43,9 @@ export default function MessageItem({ message }: { message: Message }) {
     <div className={`flex flex-col gap-1 ${style.align}`}>
       <span className="px-1 text-xs text-gray-400">{style.label}</span>
       <div
-        className={`max-w-[80%] whitespace-pre-wrap break-words px-4 py-2.5 text-sm leading-relaxed ${style.bubble}`}
+        className={`max-w-[80%] whitespace-normal break-words px-4 py-2.5 text-sm leading-relaxed ${style.bubble} ${message.role === "user" ? "[&_a]:text-white" : ""}`}
       >
-        {message.content}
+        <MarkdownContent content={message.content} />
       </div>
     </div>
   );
