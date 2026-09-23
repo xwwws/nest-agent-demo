@@ -33,6 +33,8 @@ async function bootstrap() {
       },
     }),
   );
-  await app.listen(process.env.PORT as unknown as number);
+  const server = await app.listen(process.env.PORT as unknown as number);
+  server.keepAliveTimeout = 65000; // 设置为 65 秒
+  server.headersTimeout = 66000; // 略大于 keepAliveTimeout
 }
 bootstrap();
