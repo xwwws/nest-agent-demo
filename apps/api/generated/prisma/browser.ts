@@ -32,3 +32,8 @@ export type Conversation = Prisma.ConversationModel
  * 
  */
 export type Message = Prisma.MessageModel
+/**
+ * Model Agent
+ * 
+ */
+export type Agent = Prisma.AgentModel

@@ -11,6 +11,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ConversationModule } from './conversation/conversation.module';
 import { MessagesModule } from './messages/messages.module';
 import { LlmModule } from './llm/llm.module';
+import { AgentModule } from './agent/agent.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { LlmModule } from './llm/llm.module';
     ConversationModule,
     MessagesModule,
     LlmModule,
+    AgentModule,
   ],
   controllers: [AppController, HealthController],
   providers: [
