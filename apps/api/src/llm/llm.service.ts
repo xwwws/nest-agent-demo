@@ -23,10 +23,6 @@ export class LlmService {
             role: 'system',
             content: systemPrompt || DEFAULT_SYSTEM_PROMPT,
           },
-          {
-            role: 'system',
-            content: DEFAULT_SYSTEM_PROMPT,
-          },
           ...messages,
         ],
       });
