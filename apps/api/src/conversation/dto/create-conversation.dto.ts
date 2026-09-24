@@ -1,24 +1,28 @@
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
+// 空值安全的 trim：显式传 null（例如清空提示词）时不能直接调 .trim()，否则会抛 TypeError
+const trim = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? value.trim() : value;
+
 export class CreateConversationDto {
   @IsNotEmpty()
   @IsString()
-  @Transform(({ value }) => value.trim())
+  @Transform(trim)
   title: string;
 
   @IsNotEmpty()
   @IsString()
-  @Transform(({ value }) => value.trim())
+  @Transform(trim)
   content: string;
 
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => value.trim())
-  systemPrompt?: string;
+  @Transform(trim)
+  systemPrompt?: string | null;
 
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => value.trim())
-  agentId?: string;
+  @Transform(trim)
+  agentId?: string | null;
 }

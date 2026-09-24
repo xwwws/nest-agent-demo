@@ -47,12 +47,9 @@ export class MessagesService {
       role: message.role as 'user' | 'assistant',
       content: message.content,
     }));
-    // 查询会话信息  获取会话的agent提示词
-    const conversationInfo = await this.prisma.conversation.findFirst({
-      where: { id: id, userId: user.id },
-    });
+    // 提示词优先级：绑定的 Agent > 会话自身的 systemPrompt > 默认（由 LlmService 兜底）
     const systemPrompt =
-      conversation.agent?.systemPrompt ?? conversationInfo?.systemPrompt ?? '';
+      conversation.agent?.systemPrompt ?? conversation.systemPrompt;
     // 调用llm生成回复消息
     const assistantContent = await this.llmService.chat(messages, systemPrompt);
     // 将llm生成的回复消息写入数据库
