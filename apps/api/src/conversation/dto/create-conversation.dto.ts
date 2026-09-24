@@ -16,4 +16,9 @@ export class CreateConversationDto {
   @IsString()
   @Transform(({ value }) => value.trim())
   systemPrompt?: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  agentId?: string;
 }

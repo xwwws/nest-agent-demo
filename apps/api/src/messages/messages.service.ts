@@ -20,6 +20,9 @@ export class MessagesService {
     // 确认当前会话存在
     const conversation = await this.prisma.conversation.findFirst({
       where: { id: id, userId: user.id },
+      include: {
+        agent: true,
+      },
     });
     if (!conversation) {
       throw new NotFoundException('Conversation not found');
@@ -48,11 +51,10 @@ export class MessagesService {
     const conversationInfo = await this.prisma.conversation.findFirst({
       where: { id: id, userId: user.id },
     });
+    const systemPrompt =
+      conversation.agent?.systemPrompt ?? conversationInfo?.systemPrompt ?? '';
     // 调用llm生成回复消息
-    const assistantContent = await this.llmService.chat(
-      messages,
-      conversationInfo?.systemPrompt,
-    );
+    const assistantContent = await this.llmService.chat(messages, systemPrompt);
     // 将llm生成的回复消息写入数据库
     const assistantMessage = await this.prisma.message.create({
       data: {

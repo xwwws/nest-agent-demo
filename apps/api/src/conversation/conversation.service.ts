@@ -3,11 +3,18 @@ import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
 import type { JwtPayload } from '../auth/auth.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AgentService } from '../agent/agent.service';
 
 @Injectable()
 export class ConversationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly agentService: AgentService,
+  ) {}
   async create(createConversationDto: CreateConversationDto, user: JwtPayload) {
+    if (createConversationDto.agentId) {
+      await this.agentService.findOne(createConversationDto.agentId);
+    }
     return await this.prisma.conversation.create({
       data: { ...createConversationDto, userId: user.id },
     });
