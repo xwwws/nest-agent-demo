@@ -288,21 +288,21 @@ model Message {
 
 ## 六、学习笔记
 
-每个「目标」拆成一个独立文件，`errNotes/0.all.md` 作总目录索引：
+每个「目标」拆成一个独立文件，`notes` 作总目录索引：
 
 | 编号 | 主题 | 文件 |
 | --- | --- | --- |
-| 01 | Monorepo | [01.monorepo.md](./errNotes/01.monorepo.md) |
-| 02 | Prisma + Supabase | [02.prisma-supabase.md](./errNotes/02.prisma-supabase.md) |
-| 03 | 用户 CRUD | [03.user-crud.md](./errNotes/03.user-crud.md) |
-| 04 | Auth DTO 验证 | [04.auth-dto.md](./errNotes/04.auth-dto.md) |
-| 05 | 全局验证管道 | [05.global-validation-pipe.md](./errNotes/05.global-validation-pipe.md) |
-| 06 | bcrypt | [06.bcrypt.md](./errNotes/06.bcrypt.md) |
-| 07 | JWT 引入与签发 | [07.jwt.md](./errNotes/07.jwt.md) |
-| 08 | JWT + Passport 守卫 | [08.jwt-passport.md](./errNotes/08.jwt-passport.md) |
-| 09 | 全局守卫 + 公开路由 | [09.public-guard.md](./errNotes/09.public-guard.md) |
-| 10 | @User 参数装饰器 | [10.user-decorator.md](./errNotes/10.user-decorator.md) |
-| 11 | Conversation 模块 | [11.conversation.md](./errNotes/11.conversation.md) |
+| 01 | Monorepo | [01.monorepo.md](notes/01.monorepo.md) |
+| 02 | Prisma + Supabase | [02.prisma-supabase.md](notes/02.prisma-supabase.md) |
+| 03 | 用户 CRUD | [03.user-crud.md](notes/03.user-crud.md) |
+| 04 | Auth DTO 验证 | [04.auth-dto.md](notes/04.auth-dto.md) |
+| 05 | 全局验证管道 | [05.global-validation-pipe.md](notes/05.global-validation-pipe.md) |
+| 06 | bcrypt | [06.bcrypt.md](notes/06.bcrypt.md) |
+| 07 | JWT 引入与签发 | [07.jwt.md](notes/07.jwt.md) |
+| 08 | JWT + Passport 守卫 | [08.jwt-passport.md](notes/08.jwt-passport.md) |
+| 09 | 全局守卫 + 公开路由 | [09.public-guard.md](notes/09.public-guard.md) |
+| 10 | @User 参数装饰器 | [10.user-decorator.md](notes/10.user-decorator.md) |
+| 11 | Conversation 模块 | [11.conversation.md](notes/11.conversation.md) |
 
 ---
 
